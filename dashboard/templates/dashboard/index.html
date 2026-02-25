@@ -1,0 +1,143 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}仪表板 - iOS设备后台管理系统{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <h5><i class="fas fa-mobile-alt"></i> 设备总数</h5>
+            <h2>{{ total_devices }}</h2>
+            <p>已注册设备</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <h5><i class="fas fa-battery-quarter"></i> 低电量设备</h5>
+            <h2>{{ devices_low_battery }}</h2>
+            <p>电量低于20%</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <h5><i class="fas fa-wifi"></i> 在线设备</h5>
+            <h2>{{ total_devices|add:"-devices_offline" }}</h2>
+            <p>最近30分钟在线</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <h5><i class="fas fa-shield-alt"></i> 活跃策略</h5>
+            <h2>{{ policies|length }}</h2>
+            <p>已启用策略</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> 最近设备</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>设备名称</th>
+                                <th>型号</th>
+                                <th>电池</th>
+                                <th>内存</th>
+                                <th>状态</th>
+                                <th>最后在线</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for device in devices %}
+                            <tr>
+                                <td>
+                                    <strong>{{ device.name }}</strong><br>
+                                    <small class="text-muted">{{ device.udid|truncatechars:12 }}</small>
+                                </td>
+                                <td>{{ device.model }}</td>
+                                <td>
+                                    <div class="progress" style="height: 10px;">
+                                        <div class="progress-bar {% if device.battery_level < 20 %}bg-danger{% elif device.battery_level < 50 %}bg-warning{% else %}bg-success{% endif %}"
+                                             role="progressbar" style="width: {{ device.battery_level }}%;">
+                                        </div>
+                                    </div>
+                                    <small>{{ device.battery_level }}%</small>
+                                </td>
+                                <td>{{ device.memory_usage }}%</td>
+                                <td>
+                                    {% if device.last_seen > timezone_now_minus_30min %}
+                                    <span class="device-status status-online">在线</span>
+                                    {% else %}
+                                    <span class="device-status status-offline">离线</span>
+                                    {% endif %}
+                                    {% if device.battery_level < 20 %}
+                                    <span class="device-status status-low-battery">低电量</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ device.last_seen|timesince }}前</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">暂无设备数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <a href="{% url 'devices' %}" class="btn btn-outline-primary btn-sm">查看所有设备</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-shield-alt"></i> 最近策略</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for policy in policies %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ policy.name }}</strong><br>
+                            <small class="text-muted">{{ policy.get_policy_type_display }}</small>
+                        </div>
+                        <span class="badge {% if policy.enabled %}bg-success{% else %}bg-secondary{% endif %}">
+                            {% if policy.enabled %}启用{% else %}禁用{% endif %}
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-center">暂无策略</li>
+                    {% endfor %}
+                </ul>
+                <a href="{% url 'policies' %}" class="btn btn-outline-primary btn-sm mt-3">查看所有策略</a>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs"></i> 快速操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'devices' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 添加新设备
+                    </a>
+                    <a href="{% url 'policies' %}" class="btn btn-success">
+                        <i class="fas fa-shield-alt"></i> 创建新策略
+                    </a>
+                    <a href="/admin/devices/device/add/" class="btn btn-info" target="_blank">
+                        <i class="fas fa-upload"></i> 上传设备配置
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

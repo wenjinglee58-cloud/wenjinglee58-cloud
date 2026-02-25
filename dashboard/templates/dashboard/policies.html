@@ -1,0 +1,162 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}策略管理 - iOS设备后台管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-shield-alt"></i> 策略管理</h2>
+    <div>
+        <a href="/admin/policies/policy/add/" class="btn btn-primary" target="_blank">
+            <i class="fas fa-plus"></i> 创建策略
+        </a>
+        <a href="#" class="btn btn-success">
+            <i class="fas fa-play"></i> 应用所有策略
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">策略列表</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>策略名称</th>
+                                <th>类型</th>
+                                <th>描述</th>
+                                <th>应用设备</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for policy in policies %}
+                            <tr>
+                                <td>
+                                    <strong>{{ policy.name }}</strong><br>
+                                    <small class="text-muted">ID: {{ policy.id }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ policy.get_policy_type_display }}</span>
+                                </td>
+                                <td>
+                                    {% if policy.description %}
+                                    {{ policy.description|truncatechars:50 }}
+                                    {% else %}
+                                    <span class="text-muted">无描述</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if policy.apply_to_all %}
+                                    <span class="badge bg-primary">所有设备</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ policy.devices.count }} 台设备</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if policy.enabled %}
+                                    <span class="badge bg-success">启用</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">禁用</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ policy.created_at|date:"Y-m-d" }}<br>
+                                    <small class="text-muted">{{ policy.created_at|timesince }}前</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/admin/policies/policy/{{ policy.id }}/change/" class="btn btn-outline-info" target="_blank" title="编辑">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-outline-success" title="应用策略">
+                                            <i class="fas fa-play"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-outline-warning" title="{% if policy.enabled %}禁用{% else %}启用{% endif %}">
+                                            <i class="fas fa-power-off"></i>
+                                        </a>
+                                        <a href="#" class="btn btn-outline-danger" title="删除">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="fas fa-shield-alt fa-3x text-muted mb-3"></i>
+                                    <p class="mb-0">暂无策略</p>
+                                    <small class="text-muted">创建策略以管理设备行为</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> 策略类型说明</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <strong>后台应用刷新</strong>
+                        <p class="mb-0">控制哪些应用可以在后台刷新内容，节省电池和流量。</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>后台活动限制</strong>
+                        <p class="mb-0">限制应用在后台的网络请求、定位服务等活动。</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>省电模式</strong>
+                        <p class="mb-0">自动启用低电量模式，限制性能以延长电池寿命。</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>网络限制</strong>
+                        <p class="mb-0">限制设备在特定网络环境下的数据使用。</p>
+                    </li>
+                    <li class="list-group-item">
+                        <strong>应用管理</strong>
+                        <p class="mb-0">安装、卸载或限制特定应用的使用。</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> 注意事项</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb"></i> <strong>提示：</strong> 策略需要设备注册MDM后才能生效。
+                </div>
+                <ul>
+                    <li>确保设备已安装MDM配置文件</li>
+                    <li>策略应用可能需要几分钟才能生效</li>
+                    <li>某些策略需要设备重新启动</li>
+                    <li>建议在非工作时间应用重大策略变更</li>
+                    <li>定期检查策略应用历史记录</li>
+                </ul>
+                <a href="#" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-history"></i> 查看策略应用历史
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

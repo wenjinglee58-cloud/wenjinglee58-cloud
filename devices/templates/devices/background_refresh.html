@@ -1,0 +1,237 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}后台应用刷新管理 - iOS设备后台管理系统{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-sync-alt"></i> 后台应用刷新管理</h2>
+    <div>
+        <a href="{% url 'devices' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> 返回设备列表
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5>总设备数</h5>
+                <h2>{{ total_devices }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5>启用刷新</h5>
+                <h2>{{ enabled_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h5>禁用刷新</h5>
+                <h2>{{ disabled_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <h5>管理操作</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-light" onclick="bulkAction('enable')">全部启用</button>
+                    <button class="btn btn-light" onclick="bulkAction('disable')">全部禁用</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">设备列表</h5>
+    </div>
+    <div class="card-body">
+        <form id="bulkForm" method="post" action="{% url 'bulk_toggle_background_refresh' %}">
+            {% csrf_token %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">
+                                <input type="checkbox" id="selectAll">
+                            </th>
+                            <th>设备名称</th>
+                            <th>电池</th>
+                            <th>内存</th>
+                            <th>后台刷新状态</th>
+                            <th>最后在线</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for device in devices %}
+                        <tr>
+                            <td>
+                                <input type="checkbox" name="device_ids" value="{{ device.id }}" class="device-checkbox">
+                            </td>
+                            <td>
+                                <strong>{{ device.name }}</strong><br>
+                                <small class="text-muted">{{ device.model }}</small>
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar {% if device.battery_level < 20 %}bg-danger{% elif device.battery_level < 50 %}bg-warning{% else %}bg-success{% endif %}"
+                                         role="progressbar" style="width: {{ device.battery_level }}%;">
+                                    </div>
+                                </div>
+                                <small>{{ device.battery_level }}%</small>
+                            </td>
+                            <td>{{ device.memory_usage }}%</td>
+                            <td>
+                                {% if device.background_app_refresh_enabled %}
+                                <span class="badge bg-success">启用</span>
+                                {% else %}
+                                <span class="badge bg-danger">禁用</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ device.last_seen|timesince }}前</td>
+                            <td>
+                                <button type="button" class="btn btn-sm {% if device.background_app_refresh_enabled %}btn-danger{% else %}btn-success{% endif %}"
+                                        onclick="toggleSingle('{{ device.id }}', this)">
+                                    {% if device.background_app_refresh_enabled %}
+                                    <i class="fas fa-toggle-off"></i> 禁用
+                                    {% else %}
+                                    <i class="fas fa-toggle-on"></i> 启用
+                                    {% endif %}
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="mb-0">暂无设备数据</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-3">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-primary" onclick="bulkAction('enable')">
+                        <i class="fas fa-check"></i> 启用选中
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="bulkAction('disable')">
+                        <i class="fas fa-times"></i> 禁用选中
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="bulkAction('toggle')">
+                        <i class="fas fa-sync-alt"></i> 切换选中
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 全选/全不选
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.getElementsByClassName('device-checkbox');
+    for (let checkbox of checkboxes) {
+        checkbox.checked = this.checked;
+    }
+});
+
+// 批量操作
+function bulkAction(action) {
+    const form = document.getElementById('bulkForm');
+    const actionInput = document.createElement('input');
+    actionInput.type = 'hidden';
+    actionInput.name = 'action';
+    actionInput.value = action;
+    form.appendChild(actionInput);
+
+    // 提交表单
+    form.submit();
+}
+
+// 单个设备切换
+function toggleSingle(deviceId, buttonElement) {
+    fetch(`/devices/toggle-background-refresh/${deviceId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 更新按钮状态
+            if (data.enabled) {
+                buttonElement.className = 'btn btn-sm btn-danger';
+                buttonElement.innerHTML = '<i class="fas fa-toggle-off"></i> 禁用';
+                // 更新状态徽章
+                const statusCell = buttonElement.closest('tr').querySelector('td:nth-child(5)');
+                statusCell.innerHTML = '<span class="badge bg-success">启用</span>';
+            } else {
+                buttonElement.className = 'btn btn-sm btn-success';
+                buttonElement.innerHTML = '<i class="fas fa-toggle-on"></i> 启用';
+                // 更新状态徽章
+                const statusCell = buttonElement.closest('tr').querySelector('td:nth-child(5)');
+                statusCell.innerHTML = '<span class="badge bg-danger">禁用</span>';
+            }
+
+            // 显示成功消息
+            showAlert('success', data.message);
+        } else {
+            showAlert('danger', '操作失败');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('danger', '网络错误');
+    });
+}
+
+// 显示提示消息
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    const container = document.querySelector('.container-fluid .row .col-md-10');
+    container.insertBefore(alertDiv, container.firstChild);
+
+    // 5秒后自动消失
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// 获取CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
